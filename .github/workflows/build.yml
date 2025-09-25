@@ -14,12 +14,20 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        version: v4.4.6   # dùng bản ổn định cho ESP32-S3
+        version: v4.4.6
+
+    - name: Cache ESP-IDF
+      uses: actions/cache@v3
+      with:
+        path: ~/esp
+        key: ${{ runner.os }}-esp-idf-${{ hashFiles('**/idf.py') }}
 
     - name: Build project
       run: |
+        source ~/esp/esp-idf/export.sh
         idf.py set-target esp32s3
         idf.py build
+      shell: bash
 
     - name: Package binaries
       run: |
@@ -28,6 +36,19 @@ jobs:
         cp build/partition_table/partition-table.bin release/ || true
         cp build/esp32_nat_router.bin release/ || true
         cd release && zip -r ../firmware_artifacts.zip .
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32s3-firmware
+        path: firmware_artifacts.zip
+
+    - name: Log build output
+      if: always()
+      run: |
+        cat build/build.log || echo "No build log found"
+      shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
