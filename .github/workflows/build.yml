@@ -11,25 +11,41 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache dfu-util libusb-1.0-0-dev
+
     - name: Setup ESP-IDF
-      uses: espressif/setup-esp-idf@v2  # Sửa lại action và dùng phiên bản v2
-      with:
-        version: 4.4.6  # Giữ phiên bản 4.4.6 như bạn đã chọn
+      run: |
+        cd ~
+        mkdir -p esp
+        cd esp
+        wget https://github.com/espressif/esp-idf/archive/v4.4.6.zip
+        unzip v4.4.6.zip
+        cd esp-idf-4.4.6
+        ./install.sh esp32s3
+        source ./export.sh
+        echo "export IDF_PATH=~/esp/esp-idf-4.4.6" >> $GITHUB_ENV
+        echo "source ~/esp/esp-idf-4.4.6/export.sh" >> $GITHUB_ENV
+      shell: bash
 
     - name: Cache ESP-IDF
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/esp
-        key: ${{ runner.os }}-esp-idf-${{ hashFiles('**/idf.py') }}
+        key: ${{ runner.os }}-esp-idf-4.4.6-${{ hashFiles('~/esp/esp-idf-4.4.6/**') }}
 
     - name: Build project
       run: |
-        source ~/esp/esp-idf/export.sh
+        source ~/esp/esp-idf-4.4.6/export.sh
+        cd ${{ github.workspace }}
         idf.py set-target esp32s3
         idf.py build
       shell: bash
 
     - name: Package binaries
+      if: success()
       run: |
         mkdir -p release
         cp build/bootloader/bootloader.bin release/ || true
@@ -39,13 +55,16 @@ jobs:
       shell: bash
 
     - name: Upload artifact
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: esp32s3-firmware
         path: firmware_artifacts.zip
+        retention-days: 30
 
     - name: Log build output
       if: always()
       run: |
-        cat build/build.log || echo "No build log found"
+        find . -name "build.log" -exec cat {} \; || echo "No build log found"
       shell: bash
+
