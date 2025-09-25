@@ -1,36 +1,36 @@
 name: Build ESP32-S3 firmware
 
 on:
-  push:
-    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Setup ESP-IDF
-        uses: esp-idf/setup-esp-idf@v2
-        with:
-          esp-idf-version: 'v5.2.5'
-      - name: Build project
-        run: |
-          idf.py set-target esp32s3
-          idf.py build
-      - name: Package binaries
-        run: |
-          mkdir -p release
-          cp build/*.bin release/ || true
-          cp build/bootloader/bootloader.bin release/ || true
-          cp build/partition_table/partition-table.bin release/ || true
-          cd release && zip -r ../firmware_artifacts.zip .
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: esp32s3-firmware
-          path: firmware_artifacts.zip
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup ESP-IDF
+      uses: espressif/setup-esp-idf@v2
+      with:
+        esp-idf-version: v4.4.6   # dùng bản ổn định cho ESP32-S3
+
+    - name: Build project
+      run: |
+        idf.py set-target esp32s3
+        idf.py build
+
+    - name: Package binaries
+      run: |
+        mkdir -p release
+        cp build/bootloader/bootloader.bin release/ || true
+        cp build/partition_table/partition-table.bin release/ || true
+        cp build/esp32_nat_router.bin release/ || true
+        cd release && zip -r ../firmware_artifacts.zip .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32s3-firmware
+        path: firmware_artifacts.zip
